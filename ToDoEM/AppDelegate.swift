@@ -15,14 +15,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        let ctx = CoreDataStack.shared.viewContext
-        let t = Task(context: ctx)
-        t.id = 1
-        t.title = "Test task"
-        t.taskDescription = "Описание"
-        t.isCompleted = false
-        t.createdAt = Date()
-        CoreDataStack.shared.saveViewContext()
+
+
+        // ✅ Ввставляем импорт начальных данных:
+        InitialDataImporter().importIfNeeded { result in
+            switch result {
+            case .success:
+                print("✅ Initial tasks imported")
+            case .failure(let error):
+                print("❌ Import failed:", error)
+            }
+        }
+
         return true
     }
 
