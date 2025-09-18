@@ -27,10 +27,18 @@ final class InitialDataImporter {
                 let bg = CoreDataStack.shared.newBackgroundContext()
                 bg.perform {
                     for it in items {
+                        let fetchReq: NSFetchRequest<Task> = Task.fetchRequest()
+                        fetchReq.predicate = NSPredicate(format: "id == %d", it.id)
+                        if let existing = (try? bg.fetch(fetchReq))?.first {
+                            // optional: update fields if changed
+                            existing.title = it.todo
+                            existing.isCompleted = it.completed
+                            continue
+                        }
                         let t = Task(context: bg)
                         t.id = Int64(it.id)
                         t.title = it.todo
-                        t.taskDescription = "" // API не даёт описания
+                        t.taskDescription = ""
                         t.isCompleted = it.completed
                         t.createdAt = Date()
                     }
@@ -44,5 +52,6 @@ final class InitialDataImporter {
                 }
             }
         }
+
     }
 }
