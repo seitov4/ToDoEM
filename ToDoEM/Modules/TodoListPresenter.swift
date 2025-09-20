@@ -6,17 +6,22 @@
 //
 
 import Foundation
+
 final class TodoListPresenter: TodoListPresenterProtocol {
+
     weak var view: TodoListViewProtocol?
     var interactor: TodoListInteractorInput?
     var router: TodoListRouterProtocol?
 
+    // MARK: - Lifecycle
     func viewDidLoad() {
         interactor?.fetchTasks()
     }
 
+    // MARK: - User actions
     func didSelectTask(id: Int64) {
-        router?.navigateToEditTask(with: id, from: view!)
+        guard let view = view else { return }
+        router?.navigateToEditTask(with: id, from: view)
     }
 
     func didToggleComplete(id: Int64, completed: Bool) {
@@ -24,13 +29,19 @@ final class TodoListPresenter: TodoListPresenterProtocol {
     }
 
     func didTapAdd() {
-        router?.navigateToAddTask(from: view!)
+        guard let view = view else { return }
+        router?.navigateToAddTask(from: view)
     }
 
     func didTapDelete(id: Int64) {
         interactor?.deleteTask(id: id)
     }
-    
+
+    func didTapShare(id: Int64) {
+        guard let view = view else { return }
+        router?.presentShare(id: id, from: view)
+    }
+
     func search(text: String) {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if query.isEmpty {
@@ -39,8 +50,9 @@ final class TodoListPresenter: TodoListPresenterProtocol {
             interactor?.fetchTasks(matching: query)
         }
     }
-    
 }
+
+// MARK: - TodoListInteractorOutput
 extension TodoListPresenter: TodoListInteractorOutput {
     func didFetchTasks(_ tasks: [TodoItemViewModel]) {
         view?.showTasks(tasks)
@@ -50,4 +62,3 @@ extension TodoListPresenter: TodoListInteractorOutput {
         view?.showError(error.localizedDescription)
     }
 }
-

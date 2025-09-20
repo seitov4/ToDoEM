@@ -10,118 +10,72 @@ import UIKit
 final class TodoCell: UITableViewCell {
     static let reuseId = "TodoCell"
 
-    private let checkboxButton: UIButton = {
-        let btn = UIButton(type: .system)
-
-        // Отключаем iOS15+ конфигурацию (иначе появляется фон-бокс)
-        btn.configuration = nil
-
-        btn.setImage(UIImage(systemName: "circle"), for: .normal)
-        btn.setImage(UIImage(systemName: "checkmark.circle.fill"), for: .selected)
-        btn.tintColor = .systemYellow
-        btn.translatesAutoresizingMaskIntoConstraints = false
-
-        btn.backgroundColor = .clear
-        btn.layer.borderWidth = 0
-        btn.layer.cornerRadius = 0
-        btn.clipsToBounds = false
-
-        return btn
-    }()
-
-    private let titleLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 17, weight: .semibold)
-        l.textColor = .white
-        l.numberOfLines = 1
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let descriptionLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 13)
-        l.textColor = .lightGray
-        l.numberOfLines = 2
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let dateLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 12)
-        l.textColor = .gray
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
+    private let titleLabel = UILabel()
+    private let checkboxButton = UIButton(type: .system)
 
     var onToggle: (() -> Void)?
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
-        backgroundColor = .clear
-        contentView.backgroundColor = .clear
-        selectionStyle = .none
-
-        contentView.addSubview(checkboxButton)
-        contentView.addSubview(titleLabel)
-        contentView.addSubview(descriptionLabel)
-        contentView.addSubview(dateLabel)
-
-        checkboxButton.addTarget(self, action: #selector(didTapCheckbox), for: .touchUpInside)
-
-        NSLayoutConstraint.activate([
-            checkboxButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            checkboxButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            checkboxButton.widthAnchor.constraint(equalToConstant: 28),
-            checkboxButton.heightAnchor.constraint(equalToConstant: 28),
-
-            titleLabel.leadingAnchor.constraint(equalTo: checkboxButton.trailingAnchor, constant: 12),
-            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-
-            descriptionLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            descriptionLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
-            descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-
-            dateLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            dateLabel.topAnchor.constraint(equalTo: descriptionLabel.bottomAnchor, constant: 8),
-            dateLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12)
-        ])
+        setupUI()
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    @objc private func didTapCheckbox() {
-        checkboxButton.isSelected.toggle()
-        applyStrikeThrough(checkboxButton.isSelected)
-        onToggle?()
+    private func setupUI() {
+        backgroundColor = .black
+        selectionStyle = .none
+
+        // Текст заметки
+        titleLabel.font = .systemFont(ofSize: 22, weight: .regular)  // больше размер
+        titleLabel.textColor = .white
+        titleLabel.numberOfLines = 0  // чтобы длинные задачи переносились
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Чекбокс
+        checkboxButton.tintColor = .systemYellow
+        checkboxButton.translatesAutoresizingMaskIntoConstraints = false
+        checkboxButton.addTarget(self, action: #selector(toggleTapped), for: .touchUpInside)
+
+        contentView.addSubview(titleLabel)
+        contentView.addSubview(checkboxButton)
+
+        NSLayoutConstraint.activate([
+            // Чекбокс побольше
+            checkboxButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            checkboxButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            checkboxButton.widthAnchor.constraint(equalToConstant: 32),
+            checkboxButton.heightAnchor.constraint(equalToConstant: 32),
+
+            // Текст задачи с большими отступами
+            titleLabel.leadingAnchor.constraint(equalTo: checkboxButton.trailingAnchor, constant: 20),
+            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
+            titleLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16)
+        ])
     }
 
-    private func applyStrikeThrough(_ strike: Bool) {
-        if strike {
+    func configure(with model: TodoItemViewModel) {
+        if model.isCompleted {
             let attr = NSAttributedString(
-                string: titleLabel.text ?? "",
+                string: model.title,
                 attributes: [
                     .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                    .foregroundColor: UIColor.systemGray
-                ])
+                    .foregroundColor: UIColor.lightGray
+                ]
+            )
             titleLabel.attributedText = attr
         } else {
-            titleLabel.attributedText = NSAttributedString(string: titleLabel.text ?? "",
-                                                           attributes: [.foregroundColor: UIColor.white])
+            titleLabel.attributedText = nil
+            titleLabel.text = model.title
+            titleLabel.textColor = .white
         }
+
+        let imageName = model.isCompleted ? "checkmark.circle.fill" : "circle"
+        checkboxButton.setImage(UIImage(systemName: imageName), for: .normal)
     }
 
-    func configure(with vm: TodoItemViewModel) {
-        titleLabel.text = vm.title
-        descriptionLabel.text = vm.description
-        dateLabel.text = vm.dateString
-        checkboxButton.isSelected = vm.isCompleted
-        applyStrikeThrough(vm.isCompleted)
+    @objc private func toggleTapped() {
+        onToggle?()
     }
-
-    // Убираем стандартную подсветку
-    override func setHighlighted(_ highlighted: Bool, animated: Bool) {}
-    override func setSelected(_ selected: Bool, animated: Bool) {}
 }

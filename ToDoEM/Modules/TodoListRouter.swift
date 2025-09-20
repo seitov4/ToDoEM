@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import CoreData
 
 final class TodoListRouter: TodoListRouterProtocol {
     static func createModule() -> UIViewController {
@@ -38,6 +39,20 @@ final class TodoListRouter: TodoListRouterProtocol {
         let nav = UINavigationController(rootViewController: details)
         fromVC.present(nav, animated: true)
     }
+    func presentShare(id: Int64, from view: TodoListViewProtocol) {
+        guard let vc = view as? UIViewController else { return }
+
+        let ctx = CoreDataStack.shared.viewContext
+        let req: NSFetchRequest<Task> = Task.fetchRequest()
+        req.predicate = NSPredicate(format: "id == %d", id)
+
+        if let task = try? ctx.fetch(req).first {
+            let text = "\(task.title)\n\n\(task.taskDescription ?? "")"
+            let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+            vc.present(activityVC, animated: true)
+        }
+    }
+
 
     func navigateToEditTask(with id: Int64, from view: TodoListViewProtocol) {
         guard let fromVC = view as? UIViewController else { return }

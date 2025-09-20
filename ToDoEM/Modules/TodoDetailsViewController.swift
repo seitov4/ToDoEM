@@ -5,7 +5,6 @@
 //  Created by Nurseit Seitov on 18.09.2025.
 //
 
-import Foundation
 import UIKit
 import CoreData
 
@@ -14,14 +13,17 @@ final class TodoDetailsViewController: UIViewController {
     var taskId: Int64?
     var onSave: (() -> Void)?
 
-    private let titleField: UITextField = {
-        let tf = UITextField()
-        tf.font = .systemFont(ofSize: 28, weight: .bold)
-        tf.textColor = .white
-        tf.placeholder = "Заголовок"
-        tf.borderStyle = .none
-        tf.translatesAutoresizingMaskIntoConstraints = false
-        return tf
+    // Заголовок (теперь UITextView, многострочный)
+    private let titleView: UITextView = {
+        let tv = UITextView()
+        tv.font = .systemFont(ofSize: 28, weight: .bold)
+        tv.backgroundColor = .clear
+        tv.textColor = .white
+        tv.isScrollEnabled = false                // 🔑 высота растёт автоматически
+        tv.textContainerInset = .zero
+        tv.textContainer.lineFragmentPadding = 0
+        tv.translatesAutoresizingMaskIntoConstraints = false
+        return tv
     }()
 
     private let dateLabel: UILabel = {
@@ -37,6 +39,13 @@ final class TodoDetailsViewController: UIViewController {
         tv.font = .systemFont(ofSize: 17)
         tv.backgroundColor = .clear
         tv.textColor = .white
+        tv.isScrollEnabled = true
+        tv.alwaysBounceVertical = true
+        tv.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+        tv.textContainer.lineFragmentPadding = 0
+        tv.textContainer.lineBreakMode = .byWordWrapping
+        tv.isEditable = true
+        tv.isSelectable = true
         tv.translatesAutoresizingMaskIntoConstraints = false
         return tv
     }()
@@ -46,7 +55,14 @@ final class TodoDetailsViewController: UIViewController {
         view.backgroundColor = .black
         setupNav()
         layout()
-        if let id = taskId { loadTask(id: id) } else { titleField.becomeFirstResponder() }
+        setupKeyboardObservers()
+
+        if let id = taskId {
+            loadTask(id: id)
+        } else {
+            titleView.becomeFirstResponder()
+            dateLabel.text = DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short)
+        }
     }
 
     private func setupNav() {
@@ -57,22 +73,22 @@ final class TodoDetailsViewController: UIViewController {
     }
 
     private func layout() {
-        view.addSubview(titleField)
+        view.addSubview(titleView)
         view.addSubview(dateLabel)
         view.addSubview(textView)
 
         NSLayoutConstraint.activate([
-            titleField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            titleField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            titleField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            titleView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            titleView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            titleView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
 
-            dateLabel.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 6),
-            dateLabel.leadingAnchor.constraint(equalTo: titleField.leadingAnchor),
-            dateLabel.trailingAnchor.constraint(equalTo: titleField.trailingAnchor),
+            dateLabel.topAnchor.constraint(equalTo: titleView.bottomAnchor, constant: 6),
+            dateLabel.leadingAnchor.constraint(equalTo: titleView.leadingAnchor),
+            dateLabel.trailingAnchor.constraint(equalTo: titleView.trailingAnchor),
 
             textView.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 12),
-            textView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
-            textView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
+            textView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            textView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             textView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
@@ -82,9 +98,9 @@ final class TodoDetailsViewController: UIViewController {
         let req: NSFetchRequest<Task> = Task.fetchRequest()
         req.predicate = NSPredicate(format: "id == %d", id)
         if let task = try? ctx.fetch(req).first {
-            titleField.text = task.title
+            titleView.text = task.title
             textView.text = task.taskDescription
-            let df = DateFormatter(); df.dateStyle = .medium
+            let df = DateFormatter(); df.dateStyle = .medium; df.timeStyle = .short
             dateLabel.text = df.string(from: task.createdAt)
         }
     }
@@ -92,8 +108,9 @@ final class TodoDetailsViewController: UIViewController {
     @objc private func cancelTapped() { dismiss(animated: true) }
 
     @objc private func saveTapped() {
-        let titleText = titleField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let bodyText = textView.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let titleText = titleView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let bodyText = textView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+
         if titleText.isEmpty && bodyText.isEmpty {
             dismiss(animated: true); return
         }
@@ -104,7 +121,7 @@ final class TodoDetailsViewController: UIViewController {
                 let req: NSFetchRequest<Task> = Task.fetchRequest()
                 req.predicate = NSPredicate(format: "id == %d", id)
                 if let found = try? bg.fetch(req).first {
-                    found.title = titleText.isEmpty ? (found.title) : titleText
+                    found.title = titleText.isEmpty ? found.title : titleText
                     found.taskDescription = bodyText
                     found.createdAt = Date()
                 }
@@ -122,5 +139,24 @@ final class TodoDetailsViewController: UIViewController {
                 self.dismiss(animated: true)
             }
         }
+    }
+
+    // MARK: - Keyboard Handling
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+            let height = frame.height
+            textView.contentInset.bottom = height
+            textView.verticalScrollIndicatorInsets.bottom = height
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        textView.contentInset.bottom = 0
+        textView.verticalScrollIndicatorInsets.bottom = 0
     }
 }
