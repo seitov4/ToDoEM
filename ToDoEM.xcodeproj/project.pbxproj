@@ -37,6 +37,13 @@
 			);
 			target = D91E35102E793AAE003E5EB8 /* ToDoEM */;
 		};
+		D91E35B02E7EDF01003E5EB8 /* Exceptions for "ToDoEM" folder in "ToDoEMTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ToDoEM.xcdatamodeld,
+			);
+			target = D91E35292E793AB0003E5EB8 /* ToDoEMTests */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +51,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				D91E353C2E793AB0003E5EB8 /* Exceptions for "ToDoEM" folder in "ToDoEM" target */,
+				D91E35B02E7EDF01003E5EB8 /* Exceptions for "ToDoEM" folder in "ToDoEMTests" target */,
 			);
 			path = ToDoEM;
 			sourceTree = "<group>";

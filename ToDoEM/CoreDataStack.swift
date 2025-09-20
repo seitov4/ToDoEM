@@ -5,51 +5,42 @@
 //  Created by Nurseit Seitov on 16.09.2025.
 //
 
-import Foundation
+// CoreDataStack.swift
 import CoreData
 
-final class CoreDataStack {
+final class CoreDataStack: CoreDataStackProtocol {
     static let shared = CoreDataStack()
 
     let container: NSPersistentContainer
 
-    var viewContext: NSManagedObjectContext {
-        return container.viewContext
-        
-        
-    }
-
-    // инициализатор: для тестов можно передать inMemory: true
+    // default обычный файл-store, но для тестов можно создать CoreDataStack(inMemory: true)
     init(inMemory: Bool = false) {
-        container = NSPersistentContainer(name: "ToDoEM") // имя .xcdatamodeld
+        container = NSPersistentContainer(name: "ToDoEM") // <- проверь имя .xcdatamodeld
         if inMemory {
-            container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
+            let desc = NSPersistentStoreDescription()
+            desc.type = NSInMemoryStoreType
+            container.persistentStoreDescriptions = [desc]
         }
-        container.loadPersistentStores { storeDesc, error in
+        container.loadPersistentStores { _, error in
             if let error = error {
                 fatalError("Unresolved Core Data error: \(error)")
             }
         }
-        container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
 
-    func newBackgroundContext() -> NSManagedObjectContext {
-        let ctx = container.newBackgroundContext()
-        ctx.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-        return ctx
-    }
+    var viewContext: NSManagedObjectContext { container.viewContext }
 
-    func saveContext(_ context: NSManagedObjectContext) {
-        guard context.hasChanges else { return }
-        do {
-            try context.save()
-        } catch {
-            print("CoreData save error: \(error)")
-        }
+    func newBackgroundContext() -> NSManagedObjectContext {
+        container.newBackgroundContext()
     }
 
     func saveViewContext() {
-        saveContext(container.viewContext)
+        let ctx = container.viewContext
+        if ctx.hasChanges {
+            do { try ctx.save() } catch {
+                print("CoreData save error:", error)
+            }
+        }
     }
 }
